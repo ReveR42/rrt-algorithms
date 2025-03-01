@@ -43,7 +43,6 @@ class RRTBase(object):
         """
         self.trees[tree].V.insert(0, v + v, v)
         self.trees[tree].V_count += 1  # increment number of vertices in tree
-        self.samples_taken += 1  # increment number of samples taken
 
     def add_edge(self, tree, child, parent):
         """

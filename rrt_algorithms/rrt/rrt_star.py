@@ -2,7 +2,6 @@
 # file 'LICENSE', which is part of this source code package.
 from operator import itemgetter
 
-from rrt_algorithms.rrt.heuristics import cost_to_go
 from rrt_algorithms.rrt.heuristics import segment_cost, path_cost
 from rrt_algorithms.rrt.rrt import RRT
 
@@ -56,7 +55,7 @@ class RRTStar(RRT):
         # check nearby vertices for total cost and connect shortest valid edge
         for d, x_near in L_near:
             if self.connect_to_point(tree, x_near, x_new):
-                return (d, x_near)
+                return d, x_near
 
     def rewire(self, tree, x_new, L_near):
         """
