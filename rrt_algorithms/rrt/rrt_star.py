@@ -33,6 +33,11 @@ class RRTStar(RRT):
         :param x_new: vertex around which to find nearby vertices
         :return: list of nearby vertices and their costs, sorted in ascending order by cost
         """
+
+        # if only one vertex in tree, return path cost to that vertex
+        if self.trees[tree].V_count == 1:
+            return [(segment_cost(x_init, x_new), x_init)]
+
         X_near = self.nearby(tree, x_new, self.current_rewire_count(tree))
         L_near = [(path_cost(self.trees[tree].E, x_init, x_near) + segment_cost(x_near, x_new), x_near) for
                   x_near in X_near]
@@ -40,6 +45,18 @@ class RRTStar(RRT):
         L_near.sort(key=itemgetter(0))
 
         return L_near
+
+    def connect_shortest_valid(self, tree, x_new, L_near):
+        """
+        Connect to nearest vertex that has an unobstructed path
+        :param tree: int, tree being added to
+        :param x_new: tuple, vertex being added
+        :param L_near: list of nearby vertices
+        """
+        # check nearby vertices for total cost and connect shortest valid edge
+        for d, x_near in L_near:
+            if self.connect_to_point(tree, x_near, x_new):
+                return (d, x_near)
 
     def rewire(self, tree, x_new, L_near):
         """
@@ -52,22 +69,10 @@ class RRTStar(RRT):
         """
         for _, x_near in L_near:
             curr_cost = path_cost(self.trees[tree].E, self.x_init, x_near)
-            tent_cost = path_cost(
-                self.trees[tree].E, self.x_init, x_new) + segment_cost(x_new, x_near)
+            tent_cost = path_cost(self.trees[tree].E, self.x_init, x_new) + segment_cost(x_new, x_near)
             if tent_cost < curr_cost and self.X.collision_free(x_near, x_new, self.r):
                 self.trees[tree].E[x_near] = x_new
 
-    def connect_shortest_valid(self, tree, x_new, L_near):
-        """
-        Connect to nearest vertex that has an unobstructed path
-        :param tree: int, tree being added to
-        :param x_new: tuple, vertex being added
-        :param L_near: list of nearby vertices
-        """
-        # check nearby vertices for total cost and connect shortest valid edge
-        for _, x_near in L_near:
-            if self.connect_to_point(tree, x_near, x_new):
-                break
 
     def current_rewire_count(self, tree):
         """

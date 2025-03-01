@@ -2,7 +2,7 @@
 # file 'LICENSE', which is part of this source code package.
 import random
 
-from rrt_algorithms.rrt.rrt_star_bid import RRTStarBidirectional
+from rrt_algorithms.rrt.rrt_star_connect import RRTStarBidirectional
 from rrt_algorithms.utilities.geometry import dist_between_points, pairwise
 
 
