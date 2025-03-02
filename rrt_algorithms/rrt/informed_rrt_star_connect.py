@@ -38,6 +38,15 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
 
         return C
 
+    def sample_unit_ball(self, n):
+        # Sample on a unit N+1 sphere
+        r = np.random.normal(0, 1, (n, self.X.dimensions + 2))
+        norm = np.linalg.norm(r, axis=-1, keepdims=True)
+        r = r / norm
+        # The first N coordinates are uniform in a unit N ball
+        if n == 1: return r[0, :self.X.dimensions]
+        return r[:, :self.X.dimensions]
+
     def informed_sample(self):
         x_init = np.array(self.x_init)
         x_goal = np.array(self.x_goal)
@@ -51,7 +60,7 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
                 r.append(np.sqrt(self.c_best ** 2 - c_min ** 2) / 2)
 
             L = np.diag(r)
-            x_ball = 2 * np.random.rand(self.X.dimensions) - 1
+            x_ball = self.sample_unit_ball(1)
             x_rand = (self.C @ L @ x_ball).flatten() + x_center
         else:
             x_rand = self.X.sample_free()
