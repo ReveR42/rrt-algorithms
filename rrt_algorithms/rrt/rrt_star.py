@@ -24,7 +24,7 @@ class RRTStar(RRT):
         super().__init__(X, q, x_init, x_goal, max_samples, r, prc)
         self.rewire_count = rewire_count if rewire_count is not None else 0
         self.gamma = 2 ** self.X.dimensions * (1 + 1 / self.X.dimensions) * 5
-        print(self.gamma)
+        print("gamma = ", self.gamma)
 
     def rewiring_radius(self, tree):
         """
@@ -44,11 +44,6 @@ class RRTStar(RRT):
         :param x_new: vertex around which to find nearby vertices
         :return: list of nearby vertices and their costs, sorted in ascending order by cost
         """
-
-        # if only one vertex in tree, return path cost to that vertex
-        if self.trees[tree].V_count == 2:
-            return [(segment_cost(x_init, x_new), x_init)]
-
         X_near = list(self.nearby(tree, x_new, self.current_rewire_count(tree)))
         X_near.remove(x_new)
         L_near = [(path_cost(self.trees[tree].E, x_init, x_near) + segment_cost(x_near, x_new), x_near) for x_near in X_near]

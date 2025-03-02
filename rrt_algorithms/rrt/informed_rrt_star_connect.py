@@ -3,7 +3,6 @@
 
 import numpy as np
 
-
 from rrt_algorithms.rrt.heuristics import segment_cost, path_cost, cost_to_go, cost_to_come
 from rrt_algorithms.rrt.rrt_star_connect import RRTStarBidirectional
 from rrt_algorithms.rrt.rrt_connect import Status
@@ -27,13 +26,15 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
         super().__init__(X, q, x_init, x_goal, max_samples, r, prc, rewire_count)
         self.previous_c_best = np.inf
         self.X_soln = []
+        self.C = self.rotate_to_world_frame(np.array(self.x_init), np.array(self.x_goal))
 
     def rotate_to_world_frame(self, x_init, x_goal):
         a1 = (x_goal - x_init) / np.linalg.norm(x_goal - x_init)
         M = a1.reshape(self.X.dimensions, 1) @ np.eye(self.X.dimensions)[np.newaxis, 0]
         U, S, V_T = np.linalg.svd(M)
 
-        C = np.diag(np.concatenate([np.ones(self.X.dimensions - 2), [np.linalg.det(U), np.linalg.det(V_T.T)]]))
+        D = np.diag(np.concatenate([np.ones(self.X.dimensions - 2), [np.linalg.det(U), np.linalg.det(V_T.T)]]))
+        C = U @ D @ V_T
 
         return C
 
@@ -44,7 +45,6 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
         if self.c_best is not np.inf:
             c_min = np.linalg.norm(x_goal - x_init)
             x_center = (x_init + x_goal) / 2.
-            C = self.rotate_to_world_frame(x_init, x_goal)
 
             r = [self.c_best / 2]
             for i in range(1, self.X.dimensions):
@@ -52,7 +52,7 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
 
             L = np.diag(r)
             x_ball = 2 * np.random.rand(self.X.dimensions) - 1
-            x_rand = (C @ L @ x_ball).flatten() + x_center
+            x_rand = (self.C @ L @ x_ball).flatten() + x_center
         else:
             x_rand = self.X.sample_free()
 
@@ -107,7 +107,6 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
 
                 if self.c_best < self.previous_c_best:
                     self.iteration_c_best.append((self.samples_taken, self.c_best))
-                    self.cpu_c_best.append((process_time() - t0_process, self.c_best))
 
                 #     self.prune_tree(0, self.c_best)
                 #     self.prune_tree(1, self.c_best)
@@ -118,13 +117,15 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
                 x_new, connect_status = self.connect_star(1, x_new)
                 if connect_status == Status.REACHED:
                     # if not (self.trees[0].V.count(x_new) and self.trees[1].V.count(x_new)):
-                        # print(f"bingus1 : {self.trees[0].V.count(x_new)} {self.trees[1].V.count(x_new)}")
+                    # print(f"bingus1 : {self.trees[0].V.count(x_new)} {self.trees[1].V.count(x_new)}")
                     # else:
                     self.X_soln.append(x_new)
             self.swap_trees()
             self.samples_taken += 1
+            self.iteration_cpu.append((self.samples_taken, process_time() - t0_process))
 
-            percentage_current = 100 if self.max_samples == 1 else round(self.samples_taken / (self.max_samples - 1) * 100.)
+            percentage_current = 100 if self.max_samples == 1 else round(
+                self.samples_taken / (self.max_samples - 1) * 100.)
             if percentage_disp != percentage_current:
                 percentage_disp = percentage_current
                 print(f"{percentage_disp}%")

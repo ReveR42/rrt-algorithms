@@ -1,22 +1,15 @@
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE', which is part of this source code package.
 
-import enum
 
 import numpy as np
 
 from rrt_algorithms.utilities.geometry import steer
 from rrt_algorithms.rrt.heuristics import segment_cost, path_cost
 from rrt_algorithms.rrt.rrt_star import RRTStar
+from rrt_algorithms.rrt.rrt_connect import Status
 
 from time import process_time
-
-
-class Status(enum.Enum):
-    FAILED = 1
-    TRAPPED = 2
-    ADVANCED = 3
-    REACHED = 4
 
 
 class RRTStarBidirectional(RRTStar):
@@ -39,7 +32,7 @@ class RRTStarBidirectional(RRTStar):
         self.x_best = None
         self.iteration_c_best = []
         self.t_max = 0
-        self.cpu_c_best = []
+        self.iteration_cpu = []
 
     def rewire(self, tree, x_new, L_near):
         """
@@ -108,8 +101,11 @@ class RRTStarBidirectional(RRTStar):
             x_min = self.connect_nearest_parent(tree, L_near, x_new, x_nearest)
 
             # rewire tree
-            if len(L_near) > 0:
+            try:
                 L_near.remove(x_min)
+            except ValueError:
+                # L_near is either empty or bugged (bugged encountered once in approx 50 runs)
+                pass
             self.rewire(tree, x_new, L_near)
 
             if np.abs(np.sum(np.array(x_new) - np.array(x_rand))) < 1e-2:
@@ -149,13 +145,14 @@ class RRTStarBidirectional(RRTStar):
                             self.x_best = x_new
                             self.c_best = c_tent
                             self.iteration_c_best.append((self.samples_taken, self.c_best))
-                            self.cpu_c_best.append((process_time() - t0_process, self.c_best))
                     except KeyError:
                         pass
             self.swap_trees()
             self.samples_taken += 1
+            self.iteration_cpu.append((self.samples_taken, process_time() - t0_process))
 
-            percentage_current = 100 if self.max_samples == 1 else round(self.samples_taken / (self.max_samples - 1) * 100.)
+            percentage_current = 100 if self.max_samples == 1 else round(
+                self.samples_taken / (self.max_samples - 1) * 100.)
             if percentage_disp != percentage_current:
                 percentage_disp = percentage_current
                 print(f"{percentage_disp}%")

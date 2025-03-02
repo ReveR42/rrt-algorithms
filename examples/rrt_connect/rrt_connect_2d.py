@@ -15,7 +15,7 @@ x_goal = (100, 100)  # goal location
 
 q = 2  # length of tree edges
 r = 0.5  # length of smallest edge to check for intersection with obstacles
-max_samples = 1024  # max number of samples to take before timing out
+max_samples = 3000  # max number of samples to take before timing out
 prc = 0.1  # probability of checking for a connection to goal
 
 # create search space
