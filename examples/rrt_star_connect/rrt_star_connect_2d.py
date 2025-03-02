@@ -13,10 +13,11 @@ Obstacles = np.array([(20, 20, 40, 40), (20, 60, 40, 80),
 x_init = (0, 0)  # starting location
 x_goal = (100, 100)  # goal location
 
-q = 8  # length of tree edges
-r = 1  # length of smallest edge to check for intersection with obstacles
-max_samples = 1024  # max number of samples to take before timing out
-rewire_count = 32  # optional, number of nearby branches to rewire
+q = 2  # length of tree edges
+r = 0.5  # length of smallest edge to check for intersection with obstacles
+max_samples = 3000  # max number of samples to take before timing out
+# rewire_count = 32  # optional, number of nearby branches to rewire
+rewire_count = None  # optional, number of nearby branches to rewire
 prc = 0.1  # probability of checking for a connection to goal
 
 # create Search Space

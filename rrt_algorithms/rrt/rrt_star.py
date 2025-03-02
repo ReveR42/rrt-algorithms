@@ -2,6 +2,8 @@
 # file 'LICENSE', which is part of this source code package.
 from operator import itemgetter
 
+import numpy as np
+
 from rrt_algorithms.rrt.heuristics import segment_cost, path_cost
 from rrt_algorithms.rrt.rrt import RRT
 
@@ -21,6 +23,16 @@ class RRTStar(RRT):
         """
         super().__init__(X, q, x_init, x_goal, max_samples, r, prc)
         self.rewire_count = rewire_count if rewire_count is not None else 0
+        self.gamma = 2 ** self.X.dimensions * (1 + 1 / self.X.dimensions) * 5
+        print(self.gamma)
+
+    def rewiring_radius(self, tree):
+        """
+        Return rewiring radius
+        :param tree: tree being rewired
+        :return: rewiring radius of tree
+        """
+        return self.gamma * (np.log10(self.trees[tree].V_count) / self.trees[tree].V_count) ** (1 / self.X.dimensions)
 
     def get_nearby_vertices(self, tree, x_init, x_new):
         """
@@ -34,16 +46,23 @@ class RRTStar(RRT):
         """
 
         # if only one vertex in tree, return path cost to that vertex
-        if self.trees[tree].V_count == 1:
+        if self.trees[tree].V_count == 2:
             return [(segment_cost(x_init, x_new), x_init)]
 
-        X_near = self.nearby(tree, x_new, self.current_rewire_count(tree))
-        L_near = [(path_cost(self.trees[tree].E, x_init, x_near) + segment_cost(x_near, x_new), x_near) for
-                  x_near in X_near]
+        X_near = list(self.nearby(tree, x_new, self.current_rewire_count(tree)))
+        X_near.remove(x_new)
+        L_near = [(path_cost(self.trees[tree].E, x_init, x_near) + segment_cost(x_near, x_new), x_near) for x_near in X_near]
+
         # noinspection PyTypeChecker
         L_near.sort(key=itemgetter(0))
 
-        return L_near
+        L_near_inrange = []  # list of vertices within rewiring radius
+        for item in L_near:
+            if item[0] > self.rewiring_radius(tree):
+                break
+            L_near_inrange.append(item)
+
+        return L_near_inrange
 
     def connect_shortest_valid(self, tree, x_new, L_near):
         """
@@ -66,12 +85,11 @@ class RRTStar(RRT):
         :param L_near: list of nearby vertices used to rewire
         :return:
         """
-        for _, x_near in L_near:
+        for l, x_near in L_near:
             curr_cost = path_cost(self.trees[tree].E, self.x_init, x_near)
             tent_cost = path_cost(self.trees[tree].E, self.x_init, x_new) + segment_cost(x_new, x_near)
             if tent_cost < curr_cost and self.X.collision_free(x_near, x_new, self.r):
                 self.trees[tree].E[x_near] = x_new
-
 
     def current_rewire_count(self, tree):
         """
@@ -79,9 +97,9 @@ class RRTStar(RRT):
         :param tree: tree being rewired
         :return: rewire count
         """
-        # if no rewire count specified, set rewire count to be all vertices
-        if self.rewire_count is None:
-            return self.trees[tree].V_count
+        # if no rewire count specified, set rewire count 2% of the number of vertices (when there are over 800 vertices)
+        if self.rewire_count == 0:
+            return max(self.trees[tree].V_count // 10, 16)
 
         # max valid rewire count
         return min(self.trees[tree].V_count, self.rewire_count)
@@ -95,7 +113,7 @@ class RRTStar(RRT):
         self.add_vertex(0, self.x_init)
         self.add_edge(0, self.x_init, None)
 
-        while True:
+        while self.samples_taken < self.max_samples:
             x_new, x_nearest = self.new_and_near(0, self.q)
             if x_new is None:
                 continue
@@ -110,6 +128,7 @@ class RRTStar(RRT):
                 # rewire tree
                 self.rewire(0, x_new, L_near)
 
-            solution = self.check_solution()
-            if solution[0]:
-                return solution[1]
+        solution = self.check_solution()
+        if solution[0]:
+            return solution[1]
+        return None
