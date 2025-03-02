@@ -4,13 +4,23 @@
 from rrt_algorithms.utilities.geometry import dist_between_points
 
 
-def cost_to_go(a: tuple, b: tuple) -> float:
+def cost_to_go(x_goal: tuple, a: tuple) -> float:
     """
+    Based on Gammell et al. (2018)
     :param a: current location
     :param b: next location
     :return: estimated segment_cost-to-go from a to b
     """
-    return dist_between_points(a, b)
+    return dist_between_points(x_goal, a)
+
+def cost_to_come(x_init: tuple, b: tuple) -> float:
+    """
+    Based on Gammell et al. (2018)
+    :param a: current location
+    :param b: next location
+    :return: estimated segment_cost-to-go from a to b
+    """
+    return dist_between_points(x_init, b)
 
 
 def path_cost(E, a, b):
