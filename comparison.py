@@ -1,6 +1,11 @@
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE', which is part of this source code package.
 
+#TODO:
+# - redo rrt* implementation
+# - check why rewiring ineffective
+# - optimize algorithms
+
 import sys
 
 import numpy as np
@@ -54,8 +59,9 @@ for k in range(N):
     print(f"Run {k + 1}/{N}")
     # generate random obstacles
     Obstacles = generate_random_obstacles(X, x_init, x_goal, n)
+    # Obstacles = np.array([(30, 30, 60, 60)]) # uncomment to use a single obstacle
 
-    # run rrt_searches
+                          # run rrt_searches
     print("RRT Connect")
     rrt_connect = RRTConnect(X, q, x_init, x_goal, max_samples, r, prc)
     conn_path = rrt_connect.rrt_connect()
