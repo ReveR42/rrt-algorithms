@@ -133,7 +133,7 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
             self.samples_taken += 1
             self.iteration_cpu.append((self.samples_taken, process_time() - t0_process))
 
-            percentage_current = 100 if self.max_samples == 1 else round(
+            percentage_current = 100 if self.max_samples == 1 else int(
                 self.samples_taken / (self.max_samples - 1) * 100.)
             if percentage_disp != percentage_current:
                 percentage_disp = percentage_current

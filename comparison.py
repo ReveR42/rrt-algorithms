@@ -40,6 +40,9 @@ n = 50  # number of obstacles
 X = SearchSpace(X_dimensions)  # create search space
 
 # List for statistics
+all_iteration_c_bests = []
+all_iterations_cpu_times = []
+
 successes = []
 runtimes = []
 iterations_of_first_solutions = []
@@ -90,6 +93,12 @@ for k in range(N):
         informed_rrt_star_connect.trees[0].V_count, informed_rrt_star_connect.trees[1].V_count,
         informed_rrt_star_connect.trees[0].V_count + informed_rrt_star_connect.trees[1].V_count)
     tree_densities.append([rrt_connect_density, rrt_star_connect_density, informed_rrt_star_connect_density])
+
+    # graph data
+    all_iteration_c_bests.append([rrt_connect.iteration_c_best, rrt_star_connect.iteration_c_best,
+                                  informed_rrt_star_connect.iteration_c_best])
+    all_iterations_cpu_times.append([rrt_connect.iteration_cpu, rrt_star_connect.iteration_cpu,
+                                     informed_rrt_star_connect.iteration_cpu])
 
 # plot searches
 plot = Plot("rrt_connect_2d_with_random_obstacles")
@@ -164,24 +173,35 @@ def format_cpu_iteration(iteration_cpu):
 
 
 # Plot graphs
-fig = plt.figure()
-ax1, ax2 = fig.subplots(1, 2)
+for k in range(N):
+    fig = plt.figure(k, figsize=(13, 6))
+    ax1, ax2 = fig.subplots(1, 2)
 
-ax1.set_title('cost = f(iterations)')
-ax1.plot(*format_cost_iteration(rrt_connect.iteration_c_best), label='RRT Connect', color='red')
-ax1.plot(*format_cost_iteration(rrt_star_connect.iteration_c_best), label='RRT* Connect', color='blue')
-ax1.plot(*format_cost_iteration(informed_rrt_star_connect.iteration_c_best), label='Informed RRT* Connect',
-         color='green')
+    rrt_connect_iteration_c_best, rrt_star_connect_iteration_c_best, informed_rrt_star_connect_iteration_c_best = \
+        all_iteration_c_bests[k]
+    ax1.set_title('cost vs iteration')
+    ax1.plot(*format_cost_iteration(rrt_connect_iteration_c_best), label='RRT Connect', color='red')
+    ax1.plot(*format_cost_iteration(rrt_star_connect_iteration_c_best), label='RRT* Connect', color='blue')
+    ax1.plot(*format_cost_iteration(informed_rrt_star_connect_iteration_c_best), label='Informed RRT* Connect',
+             color='green')
+    ax1.set_xlabel('iteration')
+    ax1.set_ylabel('cost')
 
-ax2.set_title('cost = f(CPU time)')
-ax2.plot(*format_cpu_iteration(rrt_connect.iteration_cpu), label='RRT Connect', color='red')
-ax2.plot(*format_cpu_iteration(rrt_star_connect.iteration_cpu), label='RRT* Connect', color='blue')
-ax2.plot(*format_cpu_iteration(informed_rrt_star_connect.iteration_cpu), label='Informed RRT* Connect', color='green')
+    rrt_connect_iteration_cpu, rrt_star_connect_iteration_cpu, informed_rrt_star_connect_iteration_cpu = \
+        all_iterations_cpu_times[k]
+    ax2.set_title('CPU time vs iteration')
+    ax2.plot(*format_cpu_iteration(rrt_connect_iteration_cpu), label='RRT Connect', color='red')
+    ax2.plot(*format_cpu_iteration(rrt_star_connect_iteration_cpu), label='RRT* Connect', color='blue')
+    ax2.plot(*format_cpu_iteration(informed_rrt_star_connect_iteration_cpu), label='Informed RRT* Connect', color='green')
+    ax2.set_xlabel('iteration')
+    ax2.set_ylabel('CPU time (s)')
 
-ax1.legend(loc="upper right")
-ax2.legend(loc="upper right")
+    ax1.legend(loc="upper right")
+    ax2.legend(loc="upper right")
 
-# plt.show()
+    plt.savefig(f"results/run_{k}_info.png")
+    # plt.show()
+    plt.close(k)
 
 # Print statistics
 success_rates = np.sum(successes, axis=0) / N
