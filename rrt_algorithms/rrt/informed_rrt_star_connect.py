@@ -1,24 +1,17 @@
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE', which is part of this source code package.
 
-import enum
-
-import random
 import numpy as np
 
-from rrt_algorithms.utilities.geometry import steer
+
 from rrt_algorithms.rrt.heuristics import segment_cost, path_cost, cost_to_go, cost_to_come
-from rrt_algorithms.rrt.rrt_star import RRTStar
+from rrt_algorithms.rrt.rrt_star_connect import RRTStarBidirectional
+from rrt_algorithms.rrt.rrt_connect import Status
+
+from time import process_time
 
 
-class Status(enum.Enum):
-    FAILED = 1
-    TRAPPED = 2
-    ADVANCED = 3
-    REACHED = 4
-
-
-class InformedRRTStarBidirectional(RRTStar):
+class InformedRRTStarBidirectional(RRTStarBidirectional):
     def __init__(self, X, q, x_init, x_goal, max_samples, r, prc=0.01, rewire_count=None):
         """
         Bidirectional RRT* Search
@@ -32,12 +25,8 @@ class InformedRRTStarBidirectional(RRTStar):
         :param rewire_count: number of nearby vertices to rewire
         """
         super().__init__(X, q, x_init, x_goal, max_samples, r, prc, rewire_count)
-        self.c_best_iteration = []
         self.previous_c_best = np.inf
-        self.c_best = np.inf
-        self.x_best = None
         self.X_soln = []
-        self.swapped = False
 
     def rotate_to_world_frame(self, x_init, x_goal):
         a1 = (x_goal - x_init) / np.linalg.norm(x_goal - x_init)
@@ -48,22 +37,22 @@ class InformedRRTStarBidirectional(RRTStar):
 
         return C
 
-    def informed_sample(self, x_init, x_goal, c_max):
-        x_init = np.array(x_init)
-        x_goal = np.array(x_goal)
+    def informed_sample(self):
+        x_init = np.array(self.x_init)
+        x_goal = np.array(self.x_goal)
 
-        if c_max is not np.inf:
+        if self.c_best is not np.inf:
             c_min = np.linalg.norm(x_goal - x_init)
             x_center = (x_init + x_goal) / 2.
             C = self.rotate_to_world_frame(x_init, x_goal)
 
-            r = [c_max / 2]
+            r = [self.c_best / 2]
             for i in range(1, self.X.dimensions):
-                r.append(np.sqrt(c_max ** 2 - c_min ** 2) / 2)
+                r.append(np.sqrt(self.c_best ** 2 - c_min ** 2) / 2)
 
             L = np.diag(r)
-            x_ball = np.random.rand(self.X.dimensions)
-            x_rand = np.dot(C, np.dot(L, x_ball)) + x_center
+            x_ball = 2 * np.random.rand(self.X.dimensions) - 1
+            x_rand = (C @ L @ x_ball).flatten() + x_center
         else:
             x_rand = self.X.sample_free()
 
@@ -97,99 +86,50 @@ class InformedRRTStarBidirectional(RRTStar):
                 while self.trees[tree].V.count(v + v) > 0:
                     self.trees[tree].V.delete(0, v + v)
 
-    def rewire(self, tree, x_new, L_near):
-        """
-        Rewire tree to shorten edges if possible
-        Only rewires vertices according to rewire count
-        :param tree: int, tree to rewire
-        :param x_new: tuple, newly added vertex
-        :param L_near: list of nearby vertices used to rewire
-        :return:
-        """
-        for _, x_near in L_near:
-            x_init = self.x_init if tree == 0 else self.x_goal
-            curr_cost = path_cost(self.trees[tree].E, x_init, x_near)
-            tent_cost = path_cost(self.trees[tree].E, x_init, x_new) + segment_cost(x_new, x_near)
-            if tent_cost < curr_cost and self.X.collision_free(x_near, x_new, self.r):
-                self.trees[tree].E[x_near] = x_new
-
-    def swap_trees(self):
-        """
-        Swap trees and start/goal
-        """
-        # swap trees
-        self.trees[0], self.trees[1] = self.trees[1], self.trees[0]
-        # swap start/goal
-        self.x_init, self.x_goal = self.x_goal, self.x_init
-
-        self.swapped = not self.swapped
-
-    def unswap(self):
-        """
-        Check if trees have been swapped and unswap
-        """
-        if self.swapped:
-            self.swap_trees()
-
-    def extend_star(self, tree, x_rand):
-        x_nearest = self.get_nearest(tree, x_rand)
-        x_new = steer(x_nearest, x_rand, self.q)
-        if self.X.collision_free(x_nearest, x_new, self.r):
-            # get nearby vertices and cost-to-come
-            x_init = self.x_init if tree == 0 else self.x_goal
-            L_near = self.get_nearby_vertices(tree, x_init, x_new)
-            # check nearby vertices for total cost and connect shortest valid edge
-            x_min = self.connect_shortest_valid(tree, x_new, L_near)
-
-            # rewire tree
-            if x_new in self.trees[tree].E:
-                try:
-                    L_near.remove(x_min)
-                except:
-                    pass
-                self.rewire(tree, x_new, L_near)
-
-            if np.abs(np.sum(np.array(x_new) - np.array(x_rand))) < 1e-2:
-                if not self.trees[0].V.count(x_new) and self.trees[1].V.count(x_new):
-                    print(f"bingus0 : {self.trees[0].V.count(x_new)} {self.trees[1].V.count(x_new)}")
-                return x_new, Status.REACHED
-            return x_new, Status.ADVANCED
-        return x_new, Status.TRAPPED
-
-    def connect_star(self, tree, x):
-        S = Status.ADVANCED
-        while S == Status.ADVANCED:
-            x_new, S = self.extend_star(tree, x)
-        return x_new, S
-
     def informed_rrt_star_bidirectional(self):
+        t0_process = process_time()
+
         self.add_vertex(0, self.x_init)
         self.add_edge(0, self.x_init, None)
         self.add_tree()
         self.add_vertex(1, self.x_goal)
         self.add_edge(1, self.x_goal, None)
 
+        percentage_disp = 0
+        print(f"{percentage_disp}%")
         while self.samples_taken < self.max_samples:
             if len(self.X_soln) > 0:
                 self.previous_c_best = self.c_best
-                self.c_best = self.calculate_shortest_path()
+                try:
+                    self.c_best = self.calculate_shortest_path()
+                except KeyError:
+                    self.X_soln.pop(-1)
+
                 if self.c_best < self.previous_c_best:
-                    self.c_best_iteration.append((self.samples_taken, self.c_best))
+                    self.iteration_c_best.append((self.samples_taken, self.c_best))
+                    self.cpu_c_best.append((process_time() - t0_process, self.c_best))
 
                 #     self.prune_tree(0, self.c_best)
                 #     self.prune_tree(1, self.c_best)
 
-            x_rand = self.informed_sample(self.x_init, self.x_goal, self.c_best)
+            x_rand = self.informed_sample()
             x_new, status = self.extend_star(0, x_rand)
             if status != Status.TRAPPED:
                 x_new, connect_status = self.connect_star(1, x_new)
                 if connect_status == Status.REACHED:
-                    if not (self.trees[0].V.count(x_new) and self.trees[1].V.count(x_new)):
-                        print(f"bingus1 : {self.trees[0].V.count(x_new)} {self.trees[1].V.count(x_new)}")
-                    else:
-                        self.X_soln.append(x_new)
+                    # if not (self.trees[0].V.count(x_new) and self.trees[1].V.count(x_new)):
+                        # print(f"bingus1 : {self.trees[0].V.count(x_new)} {self.trees[1].V.count(x_new)}")
+                    # else:
+                    self.X_soln.append(x_new)
             self.swap_trees()
             self.samples_taken += 1
+
+            percentage_current = 100 if self.max_samples == 1 else round(self.samples_taken / (self.max_samples - 1) * 100.)
+            if percentage_disp != percentage_current:
+                percentage_disp = percentage_current
+                print(f"{percentage_disp}%")
+
+        self.t_max = process_time() - t0_process
 
         if self.x_best is None:
             return None
@@ -199,6 +139,6 @@ class InformedRRTStarBidirectional(RRTStar):
         second_part = self.reconstruct_path(1, self.x_goal, self.get_nearest(1, self.x_best))
         second_part.reverse()
 
-        print(f"Best path cost history: {self.c_best_iteration}")
+        print(f"Best path cost history: {self.iteration_c_best}")
 
         return first_part + second_part
