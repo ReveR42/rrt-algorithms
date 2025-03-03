@@ -1,10 +1,10 @@
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE', which is part of this source code package.
 
-#TODO:
-# - redo rrt* implementation
-# - check why rewiring ineffective
-# - optimize algorithms
+# TODO: - save as images
+#       - redo rrt* implementation
+#       - check why rewiring ineffective
+#       - optimize algorithms
 
 import sys
 
@@ -24,15 +24,20 @@ import matplotlib as mpl
 mpl.use('Qt5Agg')
 
 # number of searches to run for statistical analysis
-if len(sys.argv) > 1:
-    N = int(sys.argv[1])
-else:
-    N = 1
-print(f"Running {N} searches")
+N, type = None, None
 
-X_dimensions = np.array([(0, 100), (0, 100)])  # dimensions of Search Space
-x_init = (0, 0)  # starting location
-x_goal = (100, 100)  # goal location
+for i, arg in enumerate(sys.argv):
+    if arg == '-N':
+        N = int(sys.argv[i + 1])
+    if arg == '--type':
+        type = sys.argv[i + 1]
+
+if N is None:
+    N = 1
+if type is None or type not in ["cluttered", "single"]:
+    type = "single"
+
+print(f"Running {N} searches of type {type}")
 
 q = 4  # length of tree edges
 r = 0.5  # length of smallest edge to check for intersection with obstacles
@@ -40,9 +45,17 @@ max_samples = 3000  # max number of samples to take before timing out
 # rewire_count = 32  # optional, number of nearby branches to rewire
 rewire_count = None  # optional, number of nearby branches to rewire
 prc = 0.1  # probability of checking for a connection to goal
-n = 50  # number of obstacles
+n = 50  # number of obstacles for random obstacle generation
 
-X = SearchSpace(X_dimensions)  # create search space
+# Genrate search space
+X_dimensions = np.array([(0, 100), (0, 100)])  # dimensions of Search Space
+
+if type == "cluttered":
+    x_init = (0, 0)  # starting location
+    x_goal = (100, 100)  # goal location
+else:
+    x_init = (15, 50)  # starting location
+    x_goal = (85, 50)  # goal location
 
 # List for statistics
 all_iteration_c_bests = []
@@ -57,11 +70,19 @@ tree_densities = []
 print("running searches...")
 for k in range(N):
     print(f"Run {k + 1}/{N}")
-    # generate random obstacles
-    Obstacles = generate_random_obstacles(X, x_init, x_goal, n)
-    # Obstacles = np.array([(30, 30, 60, 60)]) # uncomment to use a single obstacle
 
-                          # run rrt_searches
+    # generate obstacles
+    if type == "cluttered":
+        X = SearchSpace(X_dimensions)  # create search space
+        Obstacles = generate_random_obstacles(X, x_init, x_goal, n)
+    elif type == "single":
+        Obstacles = np.array([(30, 30, 70, 70)])  # uncomment to use a single obstacle
+        X = SearchSpace(X_dimensions, Obstacles)  # create search space
+    else:
+        Obstacles = []
+        X = SearchSpace(X_dimensions, Obstacles)  # create search space
+
+    # run rrt_searches
     print("RRT Connect")
     rrt_connect = RRTConnect(X, q, x_init, x_goal, max_samples, r, prc)
     conn_path = rrt_connect.rrt_connect()
@@ -107,7 +128,7 @@ for k in range(N):
                                      informed_rrt_star_connect.iteration_cpu])
 
 # plot searches
-plot = Plot("rrt_connect_2d_with_random_obstacles")
+plot = Plot(f"rrt_connect_{rrt_connect.X.dimensions}d_{type}")
 plot.plot_tree(X, rrt_connect.trees)
 if conn_path is not None:
     plot.plot_path(X, conn_path)
@@ -116,7 +137,7 @@ plot.plot_start(X, x_init)
 plot.plot_goal(X, x_goal)
 plot.draw(auto_open=True)
 
-plot = Plot("rrt_star_connect_2d_with_random_obstacles")
+plot = Plot(f"rrt_star_connect_{rrt_star_connect.X.dimensions}d_{type}")
 plot.plot_tree(X, rrt_star_connect.trees)
 if star_conn_path is not None:
     plot.plot_path(X, star_conn_path)
@@ -125,7 +146,7 @@ plot.plot_start(X, x_init)
 plot.plot_goal(X, x_goal)
 plot.draw(auto_open=True)
 
-plot = Plot("informed_rrt_star_connect_2d_with_random_obstacles")
+plot = Plot(f"informed_rrt_star_connect_{informed_rrt_star_connect.X.dimensions}d_{type}")
 plot.plot_tree(X, informed_rrt_star_connect.trees)
 if inf_star_conn_path is not None:
     plot.plot_path(X, inf_star_conn_path)
@@ -134,9 +155,13 @@ plot.plot_start(X, x_init)
 plot.plot_goal(X, x_goal)
 plot.draw(auto_open=True)
 
+# Format and store plot data
 
-# plot cost graphs
-def format_cost_iteration(iteration_c_best):
+all_c_bests_padded = []
+all_cpu_times_padded = []
+
+
+def format_iteration_cost(iteration_c_best):
     if len(iteration_c_best) == 0:
         return [], []
 
@@ -157,25 +182,22 @@ def format_cost_iteration(iteration_c_best):
     return iterations, c_bests
 
 
-def format_cpu_iteration(iteration_cpu):
+def format_cpu(iteration_cpu):
     if len(iteration_cpu) == 0:
         return [], []
 
-    # getting iterations
-    iterations = range(iteration_cpu[0][0], max_samples)
-
     # getting best costs
-    c_bests = []
+    cpu_time = [0]
 
     for i in range(len(iteration_cpu) - 1):
         iteration_curr, cost_curr = iteration_cpu[i]
         iterations_next, _ = iteration_cpu[i + 1]
-        c_bests.extend([cost_curr for _ in range(iteration_curr, iterations_next)])
+        cpu_time.extend([cost_curr for _ in range(iteration_curr, iterations_next)])
 
     last_iteration, last_cost = iteration_cpu[-1]
-    c_bests.extend([last_cost for _ in range(last_iteration, max_samples)])
+    cpu_time.extend([last_cost for _ in range(last_iteration, max_samples)])
 
-    return iterations, c_bests
+    return cpu_time
 
 
 # Plot graphs
@@ -185,29 +207,135 @@ for k in range(N):
 
     rrt_connect_iteration_c_best, rrt_star_connect_iteration_c_best, informed_rrt_star_connect_iteration_c_best = \
         all_iteration_c_bests[k]
+    iterations_connect, c_bests_connect = format_iteration_cost(rrt_connect_iteration_c_best)
+    iterations_star_connect, c_bests_star_connect = format_iteration_cost(rrt_star_connect_iteration_c_best)
+    iterations_inf_star_connect, c_bests_inf_star_connect = format_iteration_cost(
+        informed_rrt_star_connect_iteration_c_best)
+
     ax1.set_title('cost vs iteration')
-    ax1.plot(*format_cost_iteration(rrt_connect_iteration_c_best), label='RRT Connect', color='red')
-    ax1.plot(*format_cost_iteration(rrt_star_connect_iteration_c_best), label='RRT* Connect', color='blue')
-    ax1.plot(*format_cost_iteration(informed_rrt_star_connect_iteration_c_best), label='Informed RRT* Connect',
-             color='green')
     ax1.set_xlabel('iteration')
     ax1.set_ylabel('cost')
 
+    ax1.plot(iterations_connect, c_bests_connect, label='RRT Connect', color='red')
+    ax1.plot(iterations_star_connect, c_bests_star_connect, label='RRT* Connect', color='blue')
+    ax1.plot(iterations_inf_star_connect, c_bests_inf_star_connect, label='Informed RRT* Connect', color='green')
+
+    all_c_bests_padded.append(
+        [np.hstack([[k], np.inf * np.ones(max_samples - len(c_bests_connect)), c_bests_connect]),
+         np.hstack([[k], np.inf * np.ones(max_samples - len(c_bests_star_connect)), c_bests_star_connect]),
+         np.hstack([[k], np.inf * np.ones(max_samples - len(c_bests_inf_star_connect)), c_bests_inf_star_connect])]
+    )
+
     rrt_connect_iteration_cpu, rrt_star_connect_iteration_cpu, informed_rrt_star_connect_iteration_cpu = \
         all_iterations_cpu_times[k]
+
+    rrt_connect_cpu = format_cpu(rrt_connect_iteration_cpu)
+    rrt_star_connect_cpu = format_cpu(rrt_star_connect_iteration_cpu)
+    rrt_inf_star_connect_cpu = format_cpu(informed_rrt_star_connect_iteration_cpu)
+
     ax2.set_title('CPU time vs iteration')
-    ax2.plot(*format_cpu_iteration(rrt_connect_iteration_cpu), label='RRT Connect', color='red')
-    ax2.plot(*format_cpu_iteration(rrt_star_connect_iteration_cpu), label='RRT* Connect', color='blue')
-    ax2.plot(*format_cpu_iteration(informed_rrt_star_connect_iteration_cpu), label='Informed RRT* Connect', color='green')
     ax2.set_xlabel('iteration')
     ax2.set_ylabel('CPU time (s)')
+
+    ax2.plot(rrt_connect_cpu, label='RRT Connect', color='red')
+    ax2.plot(rrt_star_connect_cpu, label='RRT* Connect', color='blue')
+    ax2.plot(rrt_inf_star_connect_cpu, label='Informed RRT* Connect', color='green')
+
+    all_cpu_times_padded.append([np.hstack([[k], rrt_connect_cpu]),
+                                 np.hstack([[k], rrt_star_connect_cpu]),
+                                 np.hstack([[k], rrt_inf_star_connect_cpu])])
 
     ax1.legend(loc="upper right")
     ax2.legend(loc="upper right")
 
-    plt.savefig(f"results/run_{k}_info.png")
-    # plt.show()
+    plt.savefig(f"results/{type}/run_{k}_info.png")
     plt.close(k)
+
+fig = plt.figure(N, figsize=(13, 6))
+ax1, ax2 = fig.subplots(1, 2)
+
+all_iteration_c_bests_median = np.median(all_c_bests_padded, axis=0)[:, 1:]
+all_iteration_c_bests_std = np.std(all_c_bests_padded, axis=0)[:, 1:]
+
+start_index_conn, start_index_star_conn, start_index_inf_star_conn = \
+    np.sum(np.isinf(all_iteration_c_bests_median), axis=1).astype(int)
+
+ax1.set_title('cost vs iteration')
+ax1.set_xlabel('iteration')
+ax1.set_ylabel('cost')
+
+ax1.plot(list(range(start_index_conn, max_samples)),
+         all_iteration_c_bests_median[0, start_index_conn:],
+         label='RRT Connect (median)', color='red')
+ax1.plot(list(range(start_index_conn, max_samples)),
+         all_iteration_c_bests_median[0, start_index_conn:] + all_iteration_c_bests_std[0, start_index_conn:],
+         label='RRT Connect (std)', linestyle='dashed', color='red', linewidth=0.5)
+ax1.plot(list(range(start_index_conn, max_samples)),
+         all_iteration_c_bests_median[0, start_index_conn:] - all_iteration_c_bests_std[0, start_index_conn:],
+         linestyle='dashed', color='red', linewidth=0.5)
+
+ax1.plot(list(range(start_index_star_conn, max_samples)),
+         all_iteration_c_bests_median[1, start_index_star_conn:],
+         label='RRT* Connect (median)', color='blue')
+ax1.plot(list(range(start_index_star_conn, max_samples)),
+         all_iteration_c_bests_median[1, start_index_star_conn:] + all_iteration_c_bests_std[1, start_index_star_conn:],
+         label='RRT* Connect (std)', linestyle='dashed', color='blue', linewidth=0.5)
+ax1.plot(list(range(start_index_star_conn, max_samples)),
+         all_iteration_c_bests_median[1, start_index_star_conn:] - all_iteration_c_bests_std[1, start_index_star_conn:],
+         linestyle='dashed', color='blue', linewidth=0.5)
+
+ax1.plot(list(range(start_index_inf_star_conn, max_samples)),
+         all_iteration_c_bests_median[2, start_index_inf_star_conn:],
+         label='Informed RRT* Connect (median)', color='green')
+ax1.plot(list(range(start_index_inf_star_conn, max_samples)),
+         all_iteration_c_bests_median[2, start_index_inf_star_conn:] + all_iteration_c_bests_std[2,
+                                                                       start_index_inf_star_conn:],
+         label='Informed RRT* Connect (std)', linestyle='dashed', color='green', linewidth=0.5)
+ax1.plot(list(range(start_index_inf_star_conn, max_samples)),
+         all_iteration_c_bests_median[2, start_index_inf_star_conn:] - all_iteration_c_bests_std[2,
+                                                                       start_index_inf_star_conn:],
+         linestyle='dashed', color='green', linewidth=0.5)
+
+all_iteration_cpu_times_median = np.median(all_cpu_times_padded, axis=0)[:, 1:]
+all_iteration_cpu_times_std = np.std(all_cpu_times_padded, axis=0)[:, 1:]
+
+ax2.set_title('CPU time vs iteration')
+ax2.set_xlabel('iteration')
+ax2.set_ylabel('CPU time (s)')
+
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[0],
+             label='RRT Connect (median)', color='red')
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[0] + all_iteration_cpu_times_std[0],
+             label='RRT Connect (std)', linestyle='dashed', color='red', linewidth=0.5)
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[0] - all_iteration_cpu_times_std[0],
+             linestyle='dashed', color='red', linewidth=0.5)
+
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[1],
+             label='RRT* Connect (median)', color='blue')
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[1] + all_iteration_cpu_times_std[1],
+             label='RRT* Connect (std)', linestyle='dashed', color='blue', linewidth=0.5)
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[1] - all_iteration_cpu_times_std[1],
+             linestyle='dashed', color='blue', linewidth=0.5)
+
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[2],
+             label='Informed RRT* Connect (median)', color='green')
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[2] + all_iteration_cpu_times_std[2],
+             label='Informed RRT* Connect (std)', linestyle='dashed', color='green', linewidth=0.5)
+ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[2] - all_iteration_cpu_times_std[2],
+             linestyle='dashed', color='green', linewidth=0.5)
+
+ax1.legend(loc="upper right")
+ax2.legend(loc="upper right")
+
+plt.savefig(f"results/{type}/all_run_info.png")
+# plt.show()
+plt.close(N)
+
+# Save data
+np.savez_compressed(f"results/{type}/data.npz",
+                    c_bests=np.array(all_c_bests_padded),
+                    cpu_times=np.array(all_cpu_times_padded),
+                    allow_pickle=False)
 
 # Print statistics
 success_rates = np.sum(successes, axis=0) / N
@@ -218,7 +346,8 @@ path_costs_medians, path_costs_std = np.median(path_costs, axis=0), np.std(path_
 tree_densities_medians, tree_densities_std = np.median(tree_densities, axis=0), np.std(tree_densities, axis=0)
 
 print(
-    f"Results for {N} runs of {max_samples} samples each with:\n"
+    f"Results for {N} run(s) of {max_samples} samples with:\n"
+    f"  type: {type}\n"
     f"  search space: X_dimensions={X_dimensions.flatten()}, x_init={x_init}, x_goal={x_goal}\n"
     f"  parameters: q={q}, r={r}, rewire_count={rewire_count}, prc={prc}, n={n}\n\n"
     f"Success Rate:\n"
@@ -242,10 +371,11 @@ print(
     f"  RRT* Connect: (start_tree={tree_densities_medians[1, 0]} ± {tree_densities_std[1, 0]}, goal_tree={tree_densities_medians[1, 1]} ± {tree_densities_std[1, 1]}, total={tree_densities_medians[1, 2]} ± {tree_densities_std[1, 2]}))\n"
     f"  Informed RRT* Connect: (start_tree={tree_densities_medians[2, 0]} ± {tree_densities_std[2, 0]}, goal_tree={tree_densities_medians[2, 1]} ± {tree_densities_std[2, 1]}, total={tree_densities_medians[2, 2]} ± {tree_densities_std[2, 2]}))\n")
 
-# Save results
-with open("results/statistics.txt", "w") as file:
+# Save statistics
+with open(f"results/{type}/statistics.txt", "w") as file:
     file.write(
-        f"Results for {N} runs of {max_samples} samples each with:\n"
+        f"Results for {N} run(s) of {max_samples} samples with:\n"
+        f"  type: {type}\n"
         f"  search space: X_dimensions={X_dimensions.flatten()}, x_init={x_init}, x_goal={x_goal}\n"
         f"  parameters: q={q}, r={r}, rewire_count={rewire_count}, prc={prc}, n={n}\n\n"
         f"Success Rate:\n"
