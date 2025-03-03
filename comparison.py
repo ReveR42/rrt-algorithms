@@ -16,7 +16,7 @@ from rrt_algorithms.rrt.informed_rrt_star_connect import InformedRRTStarBidirect
 
 from rrt_algorithms.search_space.search_space import SearchSpace
 from rrt_algorithms.utilities.obstacle_generation import generate_random_obstacles
-from rrt_algorithms.utilities.plotting import Plot
+from rrt_algorithms.utilities.plotting import Plot, draw_map
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -34,8 +34,8 @@ for i, arg in enumerate(sys.argv):
 
 if N is None:
     N = 1
-if type is None or type not in ["cluttered", "single"]:
-    type = "single"
+if type not in ["cluttered", "single"]:
+    type = "free"
 
 print(f"Running {N} searches of type {type}")
 
@@ -45,7 +45,7 @@ max_samples = 3000  # max number of samples to take before timing out
 # rewire_count = 32  # optional, number of nearby branches to rewire
 rewire_count = None  # optional, number of nearby branches to rewire
 prc = 0.1  # probability of checking for a connection to goal
-n = 50  # number of obstacles for random obstacle generation
+n = 40  # number of obstacles for random obstacle generation
 
 # Genrate search space
 X_dimensions = np.array([(0, 100), (0, 100)])  # dimensions of Search Space
@@ -56,6 +56,24 @@ if type == "cluttered":
 else:
     x_init = (15, 50)  # starting location
     x_goal = (85, 50)  # goal location
+
+# generate obstacles
+if type == "cluttered":
+    inp = "y"
+    while inp == "y":
+        X = SearchSpace(X_dimensions)  # create search space
+        Obstacles = generate_random_obstacles(X, x_init, x_goal, n)
+        draw_map(X, X_dimensions, Obstacles, x_init, x_goal, name="cluttered_map", save_as_img=True)
+
+        inp = input("regenerate obstacles? (y/n): ")
+elif type == "single":
+    Obstacles = np.array([(30, 30, 70, 70)])  # uncomment to use a single obstacle
+    X = SearchSpace(X_dimensions, Obstacles)  # create search space
+    draw_map(X, X_dimensions, Obstacles, x_init, x_goal, name="single_map", save_as_img=True)
+
+else:
+    X = SearchSpace(X_dimensions)  # create search space
+    draw_map(X, X_dimensions, [], x_init, x_goal, name="free_map", save_as_img=True)
 
 # List for statistics
 all_iteration_c_bests = []
@@ -70,17 +88,6 @@ tree_densities = []
 print("running searches...")
 for k in range(N):
     print(f"Run {k + 1}/{N}")
-
-    # generate obstacles
-    if type == "cluttered":
-        X = SearchSpace(X_dimensions)  # create search space
-        Obstacles = generate_random_obstacles(X, x_init, x_goal, n)
-    elif type == "single":
-        Obstacles = np.array([(30, 30, 70, 70)])  # uncomment to use a single obstacle
-        X = SearchSpace(X_dimensions, Obstacles)  # create search space
-    else:
-        Obstacles = []
-        X = SearchSpace(X_dimensions, Obstacles)  # create search space
 
     # run rrt_searches
     print("RRT Connect")
@@ -135,7 +142,7 @@ if conn_path is not None:
 plot.plot_obstacles(X, Obstacles)
 plot.plot_start(X, x_init)
 plot.plot_goal(X, x_goal)
-plot.draw(auto_open=True)
+plot.draw(auto_open=True, save_as_img=True)
 
 plot = Plot(f"rrt_star_connect_{rrt_star_connect.X.dimensions}d_{type}")
 plot.plot_tree(X, rrt_star_connect.trees)
@@ -144,7 +151,7 @@ if star_conn_path is not None:
 plot.plot_obstacles(X, Obstacles)
 plot.plot_start(X, x_init)
 plot.plot_goal(X, x_goal)
-plot.draw(auto_open=True)
+plot.draw(auto_open=True, save_as_img=True)
 
 plot = Plot(f"informed_rrt_star_connect_{informed_rrt_star_connect.X.dimensions}d_{type}")
 plot.plot_tree(X, informed_rrt_star_connect.trees)
@@ -153,7 +160,7 @@ if inf_star_conn_path is not None:
 plot.plot_obstacles(X, Obstacles)
 plot.plot_start(X, x_init)
 plot.plot_goal(X, x_goal)
-plot.draw(auto_open=True)
+plot.draw(auto_open=True, save_as_img=True)
 
 # Format and store plot data
 
