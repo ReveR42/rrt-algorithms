@@ -12,6 +12,7 @@ colors = ['darkblue', 'teal']
 
 def draw_map(X, X_dimensions, Obstacles, x_init, x_goal, name="map", save_as_img=False):
     plot = Plot(name)
+    plot.layout.update(dict(xaxis=dict(range=X_dimensions[0]), yaxis=dict(range=X_dimensions[1])))
     plot.plot_marker(X, X_dimensions[:, 0])
     plot.plot_marker(X, X_dimensions[:, 1])
     plot.plot_start(X, x_init)

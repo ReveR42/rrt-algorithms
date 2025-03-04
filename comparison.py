@@ -136,6 +136,7 @@ for k in range(N):
 
 # plot searches
 plot = Plot(f"rrt_connect_{rrt_connect.X.dimensions}d_{type}")
+plot.layout.update(dict(xaxis=dict(range=X_dimensions[0]), yaxis=dict(range=X_dimensions[1])))
 plot.plot_tree(X, rrt_connect.trees)
 if conn_path is not None:
     plot.plot_path(X, conn_path)
@@ -145,6 +146,7 @@ plot.plot_goal(X, x_goal)
 plot.draw(auto_open=True, save_as_img=True)
 
 plot = Plot(f"rrt_star_connect_{rrt_star_connect.X.dimensions}d_{type}")
+plot.layout.update(dict(xaxis=dict(range=X_dimensions[0]), yaxis=dict(range=X_dimensions[1])))
 plot.plot_tree(X, rrt_star_connect.trees)
 if star_conn_path is not None:
     plot.plot_path(X, star_conn_path)
@@ -154,6 +156,7 @@ plot.plot_goal(X, x_goal)
 plot.draw(auto_open=True, save_as_img=True)
 
 plot = Plot(f"informed_rrt_star_connect_{informed_rrt_star_connect.X.dimensions}d_{type}")
+plot.layout.update(dict(xaxis=dict(range=X_dimensions[0]), yaxis=dict(range=X_dimensions[1])))
 plot.plot_tree(X, informed_rrt_star_connect.trees)
 if inf_star_conn_path is not None:
     plot.plot_path(X, inf_star_conn_path)
