@@ -47,6 +47,12 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
         if n == 1: return r[0, :self.X.dimensions]
         return r[:, :self.X.dimensions]
 
+    def is_inbound_sample(self, x_rand):
+        for i, axlims in enumerate(self.X.dimension_lengths):
+            if not axlims[0] < x_rand[i] < axlims[1]:
+                return False
+        return True
+
     def informed_sample(self):
         x_init = np.array(self.x_init)
         x_goal = np.array(self.x_goal)
@@ -60,8 +66,13 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
                 r.append(np.sqrt(self.c_best ** 2 - c_min ** 2) / 2)
 
             L = np.diag(r)
+
             x_ball = self.sample_unit_ball(1)
             x_rand = (self.C @ L @ x_ball).flatten() + x_center
+            while not (self.X.obstacle_free(x_rand) and self.is_inbound_sample(x_rand)):
+                x_ball = self.sample_unit_ball(1)
+                x_rand = (self.C @ L @ x_ball).flatten() + x_center
+
         else:
             x_rand = self.X.sample_free()
 
