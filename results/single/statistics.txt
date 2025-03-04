@@ -1,7 +1,7 @@
 Results for 10 run(s) of 3000 samples with:
   type: single
   search space: X_dimensions=[  0 100   0 100], x_init=(15, 50), x_goal=(85, 50)
-  parameters: q=4, r=0.5, rewire_count=None, prc=0.1, n=50
+  parameters: q=4, r=0.5, rewire_count=None, prc=0.1, n=40
 
 Success Rate:
   RRT Connect: 1.0
@@ -9,21 +9,21 @@ Success Rate:
   Informed RRT* Connect: 1.0
 
 Runtime:
-  RRT Connect: 2.5249622119999913 ± 0.10203637365179605
-  RRT* Connect: 84.97608245299978 ± 3.1648615374331746
-  Informed RRT* Connect: 563.501324627 ± 45.34721587909917
+  RRT Connect: 2.6386100314998657 ± 0.1066733757164886
+  RRT* Connect: 87.92313745299998 ± 3.7537115022724024
+  Informed RRT* Connect: 685.8120704030001 ± 73.5896368229631
 
 Iterations of First Solution:
-  RRT Connect: 87.5 ± 22.58317958127243
-  RRT* Connect: 88.5 ± 18.61719635176038
-  Informed RRT* Connect: 68.0 ± 24.78487441969396
+  RRT Connect: 65.5 ± 16.038703189472642
+  RRT* Connect: 73.0 ± 16.51211676315305
+  Informed RRT* Connect: 74.0 ± 21.489765005695155
 
 Path Cost:
-  RRT Connect: 114.98125909358512 ± 4.9538840338230905
-  RRT* Connect: 109.74681431094609 ± 4.219133592329634
-  Informed RRT* Connect: 111.97553660401503 ± 3.895660368691877
+  RRT Connect: 115.3347889805051 ± 8.35581992847648
+  RRT* Connect: 110.64711154636919 ± 7.781585534022076
+  Informed RRT* Connect: 110.27694588573557 ± 6.86227689766764
 
 Tree Densities:
-  RRT Connect: (start_tree=2971.5 ± 14.842169652715874, goal_tree=2967.5 ± 17.042300314218146, total=5939.5 ± 31.39187793044564))
-  RRT* Connect: (start_tree=2973.0 ± 10.16316879718132, goal_tree=2974.5 ± 9.947864092356712, total=5946.0 ± 19.23564399753749))
-  Informed RRT* Connect: (start_tree=2382.0 ± 52.39360648018038, goal_tree=2374.0 ± 52.05381830375174, total=4757.5 ± 103.89075993561698))
+  RRT Connect: (start_tree=2982.5 ± 11.577564510725043, goal_tree=2986.0 ± 7.800640999302558, total=5968.5 ± 18.39266158009765))
+  RRT* Connect: (start_tree=2981.0 ± 9.625487000666512, goal_tree=2977.0 ± 11.857908753233009, total=5956.0 ± 20.058913230780973))
+  Informed RRT* Connect: (start_tree=2984.0 ± 15.093044755780724, goal_tree=2983.5 ± 15.602563891873668, total=5967.0 ± 29.833538174343317))
