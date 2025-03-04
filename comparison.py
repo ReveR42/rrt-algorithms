@@ -21,6 +21,8 @@ from rrt_algorithms.utilities.plotting import Plot, draw_map
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+from results.view_results import plot_median_graphs
+
 mpl.use('Qt5Agg')
 
 # number of searches to run for statistical analysis
@@ -261,85 +263,9 @@ for k in range(N):
     plt.savefig(f"results/{type}/run_{k}_info.png")
     plt.close(k)
 
-fig = plt.figure(N, figsize=(13, 6))
-ax1, ax2 = fig.subplots(1, 2)
-
-all_iteration_c_bests_median = np.median(all_c_bests_padded, axis=0)[:, 1:]
-all_iteration_c_bests_std = np.std(all_c_bests_padded, axis=0)[:, 1:]
-
-start_index_conn, start_index_star_conn, start_index_inf_star_conn = \
-    np.sum(np.isinf(all_iteration_c_bests_median), axis=1).astype(int)
-
-ax1.set_title('cost vs iteration')
-ax1.set_xlabel('iteration')
-ax1.set_ylabel('cost')
-
-ax1.plot(list(range(start_index_conn, max_samples)),
-         all_iteration_c_bests_median[0, start_index_conn:],
-         label='RRT Connect (median)', color='red')
-ax1.plot(list(range(start_index_conn, max_samples)),
-         all_iteration_c_bests_median[0, start_index_conn:] + all_iteration_c_bests_std[0, start_index_conn:],
-         label='RRT Connect (std)', linestyle='dashed', color='red', linewidth=0.5)
-ax1.plot(list(range(start_index_conn, max_samples)),
-         all_iteration_c_bests_median[0, start_index_conn:] - all_iteration_c_bests_std[0, start_index_conn:],
-         linestyle='dashed', color='red', linewidth=0.5)
-
-ax1.plot(list(range(start_index_star_conn, max_samples)),
-         all_iteration_c_bests_median[1, start_index_star_conn:],
-         label='RRT* Connect (median)', color='blue')
-ax1.plot(list(range(start_index_star_conn, max_samples)),
-         all_iteration_c_bests_median[1, start_index_star_conn:] + all_iteration_c_bests_std[1, start_index_star_conn:],
-         label='RRT* Connect (std)', linestyle='dashed', color='blue', linewidth=0.5)
-ax1.plot(list(range(start_index_star_conn, max_samples)),
-         all_iteration_c_bests_median[1, start_index_star_conn:] - all_iteration_c_bests_std[1, start_index_star_conn:],
-         linestyle='dashed', color='blue', linewidth=0.5)
-
-ax1.plot(list(range(start_index_inf_star_conn, max_samples)),
-         all_iteration_c_bests_median[2, start_index_inf_star_conn:],
-         label='Informed RRT* Connect (median)', color='green')
-ax1.plot(list(range(start_index_inf_star_conn, max_samples)),
-         all_iteration_c_bests_median[2, start_index_inf_star_conn:] + all_iteration_c_bests_std[2,
-                                                                       start_index_inf_star_conn:],
-         label='Informed RRT* Connect (std)', linestyle='dashed', color='green', linewidth=0.5)
-ax1.plot(list(range(start_index_inf_star_conn, max_samples)),
-         all_iteration_c_bests_median[2, start_index_inf_star_conn:] - all_iteration_c_bests_std[2,
-                                                                       start_index_inf_star_conn:],
-         linestyle='dashed', color='green', linewidth=0.5)
-
-all_iteration_cpu_times_median = np.median(all_cpu_times_padded, axis=0)[:, 1:]
-all_iteration_cpu_times_std = np.std(all_cpu_times_padded, axis=0)[:, 1:]
-
-ax2.set_title('CPU time vs iteration')
-ax2.set_xlabel('iteration')
-ax2.set_ylabel('CPU time (s)')
-
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[0],
-             label='RRT Connect (median)', color='red')
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[0] + all_iteration_cpu_times_std[0],
-             label='RRT Connect (std)', linestyle='dashed', color='red', linewidth=0.5)
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[0] - all_iteration_cpu_times_std[0],
-             linestyle='dashed', color='red', linewidth=0.5)
-
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[1],
-             label='RRT* Connect (median)', color='blue')
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[1] + all_iteration_cpu_times_std[1],
-             label='RRT* Connect (std)', linestyle='dashed', color='blue', linewidth=0.5)
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[1] - all_iteration_cpu_times_std[1],
-             linestyle='dashed', color='blue', linewidth=0.5)
-
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[2],
-             label='Informed RRT* Connect (median)', color='green')
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[2] + all_iteration_cpu_times_std[2],
-             label='Informed RRT* Connect (std)', linestyle='dashed', color='green', linewidth=0.5)
-ax2.semilogy(list(range(max_samples)), all_iteration_cpu_times_median[2] - all_iteration_cpu_times_std[2],
-             linestyle='dashed', color='green', linewidth=0.5)
-
-ax1.legend(loc="upper right")
-ax2.legend(loc="upper right")
-
-plt.savefig(f"results/{type}/all_run_info.png")
-# plt.show()
-plt.close(N)
+# Plotting and saving graphs
+plot_median_graphs(type, max_samples, all_c_bests_padded, all_cpu_times_padded)
+plot_median_graphs(type, max_samples, all_c_bests_padded, all_cpu_times_padded, plot_std=True)
 
 # Save data
 np.savez_compressed(f"results/{type}/data.npz",
@@ -355,56 +281,33 @@ iterations_of_first_solutions_medians, iterations_of_first_solutions_std = \
 path_costs_medians, path_costs_std = np.median(path_costs, axis=0), np.std(path_costs, axis=0)
 tree_densities_medians, tree_densities_std = np.median(tree_densities, axis=0), np.std(tree_densities, axis=0)
 
-print(
-    f"Results for {N} run(s) of {max_samples} samples with:\n"
-    f"  type: {type}\n"
-    f"  search space: X_dimensions={X_dimensions.flatten()}, x_init={x_init}, x_goal={x_goal}\n"
-    f"  parameters: q={q}, r={r}, rewire_count={rewire_count}, prc={prc}, n={n}\n\n"
-    f"Success Rate:\n"
-    f"  RRT Connect: {success_rates[0]}\n"
-    f"  RRT* Connect: {success_rates[1]}\n"
-    f"  Informed RRT* Connect: {success_rates[2]}\n\n"
-    f"Runtime:\n"
-    f"  RRT Connect: {runtimes_medians[0]} ± {runtimes_std[0]}\n"
-    f"  RRT* Connect: {runtimes_medians[1]} ± {runtimes_std[1]}\n"
-    f"  Informed RRT* Connect: {runtimes_medians[2]} ± {runtimes_std[2]}\n\n"
-    f"Iterations of First Solution:\n"
-    f"  RRT Connect: {iterations_of_first_solutions_medians[0]} ± {iterations_of_first_solutions_std[0]}\n"
-    f"  RRT* Connect: {iterations_of_first_solutions_medians[1]} ± {iterations_of_first_solutions_std[1]}\n"
-    f"  Informed RRT* Connect: {iterations_of_first_solutions_medians[2]} ± {iterations_of_first_solutions_std[2]}\n\n"
-    f"Path Cost:\n"
-    f"  RRT Connect: {path_costs_medians[0]} ± {path_costs_std[0]}\n"
-    f"  RRT* Connect: {path_costs_medians[1]} ± {path_costs_std[1]}\n"
-    f"  Informed RRT* Connect: {path_costs_medians[2]} ± {path_costs_std[2]}\n\n"
-    f"Tree Densities:\n"
-    f"  RRT Connect: (start_tree={tree_densities_medians[0, 0]} ± {tree_densities_std[0, 0]}, goal_tree={tree_densities_medians[0, 1]} ± {tree_densities_std[0, 1]}, total={tree_densities_medians[0, 2]} ± {tree_densities_std[0, 2]}))\n"
-    f"  RRT* Connect: (start_tree={tree_densities_medians[1, 0]} ± {tree_densities_std[1, 0]}, goal_tree={tree_densities_medians[1, 1]} ± {tree_densities_std[1, 1]}, total={tree_densities_medians[1, 2]} ± {tree_densities_std[1, 2]}))\n"
-    f"  Informed RRT* Connect: (start_tree={tree_densities_medians[2, 0]} ± {tree_densities_std[2, 0]}, goal_tree={tree_densities_medians[2, 1]} ± {tree_densities_std[2, 1]}, total={tree_densities_medians[2, 2]} ± {tree_densities_std[2, 2]}))\n")
+datastring = (f"Results for {N} run(s) of {max_samples} samples with:\n"
+              f"  type: {type}\n"
+              f"  search space: X_dimensions={X_dimensions.flatten()}, x_init={x_init}, x_goal={x_goal}\n"
+              f"  parameters: q={q}, r={r}, rewire_count={rewire_count}, prc={prc}, n={n}\n\n"
+              f"Success Rate:\n"
+              f"  RRT Connect: {success_rates[0]}\n"
+              f"  RRT* Connect: {success_rates[1]}\n"
+              f"  Informed RRT* Connect: {success_rates[2]}\n\n"
+              f"Runtime:\n"
+              f"  RRT Connect: {runtimes_medians[0]} ± {runtimes_std[0]}\n"
+              f"  RRT* Connect: {runtimes_medians[1]} ± {runtimes_std[1]}\n"
+              f"  Informed RRT* Connect: {runtimes_medians[2]} ± {runtimes_std[2]}\n\n"
+              f"Iterations of First Solution:\n"
+              f"  RRT Connect: {iterations_of_first_solutions_medians[0]} ± {iterations_of_first_solutions_std[0]}\n"
+              f"  RRT* Connect: {iterations_of_first_solutions_medians[1]} ± {iterations_of_first_solutions_std[1]}\n"
+              f"  Informed RRT* Connect: {iterations_of_first_solutions_medians[2]} ± {iterations_of_first_solutions_std[2]}\n\n"
+              f"Path Cost:\n"
+              f"  RRT Connect: {path_costs_medians[0]} ± {path_costs_std[0]}\n"
+              f"  RRT* Connect: {path_costs_medians[1]} ± {path_costs_std[1]}\n"
+              f"  Informed RRT* Connect: {path_costs_medians[2]} ± {path_costs_std[2]}\n\n"
+              f"Tree Densities:\n"
+              f"  RRT Connect: (start_tree={tree_densities_medians[0, 0]} ± {tree_densities_std[0, 0]}, goal_tree={tree_densities_medians[0, 1]} ± {tree_densities_std[0, 1]}, total={tree_densities_medians[0, 2]} ± {tree_densities_std[0, 2]}))\n"
+              f"  RRT* Connect: (start_tree={tree_densities_medians[1, 0]} ± {tree_densities_std[1, 0]}, goal_tree={tree_densities_medians[1, 1]} ± {tree_densities_std[1, 1]}, total={tree_densities_medians[1, 2]} ± {tree_densities_std[1, 2]}))\n"
+              f"  Informed RRT* Connect: (start_tree={tree_densities_medians[2, 0]} ± {tree_densities_std[2, 0]}, goal_tree={tree_densities_medians[2, 1]} ± {tree_densities_std[2, 1]}, total={tree_densities_medians[2, 2]} ± {tree_densities_std[2, 2]}))\n")
+
+print(datastring)
 
 # Save statistics
 with open(f"results/{type}/statistics.txt", "w") as file:
-    file.write(
-        f"Results for {N} run(s) of {max_samples} samples with:\n"
-        f"  type: {type}\n"
-        f"  search space: X_dimensions={X_dimensions.flatten()}, x_init={x_init}, x_goal={x_goal}\n"
-        f"  parameters: q={q}, r={r}, rewire_count={rewire_count}, prc={prc}, n={n}\n\n"
-        f"Success Rate:\n"
-        f"  RRT Connect: {success_rates[0]}\n"
-        f"  RRT* Connect: {success_rates[1]}\n"
-        f"  Informed RRT* Connect: {success_rates[2]}\n\n"
-        f"Runtime:\n"
-        f"  RRT Connect: {runtimes_medians[0]} ± {runtimes_std[0]}\n"
-        f"  RRT* Connect: {runtimes_medians[1]} ± {runtimes_std[1]}\n"
-        f"  Informed RRT* Connect: {runtimes_medians[2]} ± {runtimes_std[2]}\n\n"
-        f"Iterations of First Solution:\n"
-        f"  RRT Connect: {iterations_of_first_solutions_medians[0]} ± {iterations_of_first_solutions_std[0]}\n"
-        f"  RRT* Connect: {iterations_of_first_solutions_medians[1]} ± {iterations_of_first_solutions_std[1]}\n"
-        f"  Informed RRT* Connect: {iterations_of_first_solutions_medians[2]} ± {iterations_of_first_solutions_std[2]}\n\n"
-        f"Path Cost:\n"
-        f"  RRT Connect: {path_costs_medians[0]} ± {path_costs_std[0]}\n"
-        f"  RRT* Connect: {path_costs_medians[1]} ± {path_costs_std[1]}\n"
-        f"  Informed RRT* Connect: {path_costs_medians[2]} ± {path_costs_std[2]}\n\n"
-        f"Tree Densities:\n"
-        f"  RRT Connect: (start_tree={tree_densities_medians[0, 0]} ± {tree_densities_std[0, 0]}, goal_tree={tree_densities_medians[0, 1]} ± {tree_densities_std[0, 1]}, total={tree_densities_medians[0, 2]} ± {tree_densities_std[0, 2]}))\n"
-        f"  RRT* Connect: (start_tree={tree_densities_medians[1, 0]} ± {tree_densities_std[1, 0]}, goal_tree={tree_densities_medians[1, 1]} ± {tree_densities_std[1, 1]}, total={tree_densities_medians[1, 2]} ± {tree_densities_std[1, 2]}))\n"
-        f"  Informed RRT* Connect: (start_tree={tree_densities_medians[2, 0]} ± {tree_densities_std[2, 0]}, goal_tree={tree_densities_medians[2, 1]} ± {tree_densities_std[2, 1]}, total={tree_densities_medians[2, 2]} ± {tree_densities_std[2, 2]}))\n")
+    file.write(datastring)
