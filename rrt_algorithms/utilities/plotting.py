@@ -8,13 +8,27 @@ from plotly import graph_objs as go
 colors = ['darkblue', 'teal']
 
 
+# TODO: add animation with frames
+
+def draw_map(X, X_dimensions, Obstacles, x_init, x_goal, name="map", save_as_img=False):
+    plot = Plot(name)
+    plot.layout.update(dict(xaxis=dict(range=X_dimensions[0]), yaxis=dict(range=X_dimensions[1])))
+    plot.plot_marker(X, X_dimensions[:, 0])
+    plot.plot_marker(X, X_dimensions[:, 1])
+    plot.plot_start(X, x_init)
+    plot.plot_goal(X, x_goal)
+    plot.plot_obstacles(X, Obstacles)
+    plot.draw(auto_open=True, save_as_img=save_as_img)
+
+
 class Plot(object):
     def __init__(self, filename):
         """
         Create a plot
         :param filename: filename
         """
-        self.filename = Path(__file__).parent / "../../output/visualizations/" / f"{filename}.html"
+        self.filename = Path(__file__).parent / "../../output/visualizations/" / f"{filename}"
+        self.image_filename = filename
         if not self.filename.parent.exists():
             self.filename.parent.mkdir(parents=True, exist_ok=True)
         self.filename = str(self.filename)
@@ -228,8 +242,45 @@ class Plot(object):
         else:  # can't plot in higher dimensions
             print("Cannot plot in > 3 dimensions")
 
-    def draw(self, auto_open=True):
+    def plot_marker(self, X, x):
+        """
+        Plot marker point
+        :param X: Search Space
+        :param x: marker location
+        """
+        if X.dimensions == 2:  # plot in 2D
+            trace = go.Scatter(
+                x=[x[0]],
+                y=[x[1]],
+                line=dict(
+                    color="blue",
+                    width=10
+                ),
+                mode="markers"
+            )
+
+            self.data.append(trace)
+        elif X.dimensions == 3:  # plot in 3D
+            trace = go.Scatter3d(
+                x=[x[0]],
+                y=[x[1]],
+                z=[x[2]],
+                line=dict(
+                    color="blue",
+                    width=10
+                ),
+                mode="markers"
+            )
+            self.data.append(trace)
+        else:  # can't plot in higher dimensions
+            print("Cannot plot in > 3 dimensions")
+
+    def draw(self, auto_open=True, save_as_img=False):
         """
         Render the plot to a file
         """
-        py.offline.plot(self.fig, filename=self.filename, auto_open=auto_open)
+        if save_as_img:
+            py.offline.plot(self.fig, filename=self.filename + "_web.html", auto_open=auto_open,
+                            image='png', image_filename=self.image_filename, image_width=2000, image_height=2000)
+        else:
+            py.offline.plot(self.fig, filename=self.filename + "_web.html", auto_open=auto_open)

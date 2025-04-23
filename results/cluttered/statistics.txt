@@ -1,0 +1,29 @@
+Results for 10 run(s) of 3000 samples with:
+  type: cluttered
+  search space: X_dimensions=[  0 100   0 100], x_init=(0, 0), x_goal=(100, 100)
+  parameters: q=4, r=0.5, rewire_count=None, prc=0.1, n=40
+
+Success Rate:
+  RRT Connect: 1.0
+  RRT* Connect: 1.0
+  Informed RRT* Connect: 1.0
+
+Runtime:
+  RRT Connect: 2.539077145999954 ± 0.18346291823419547
+  RRT* Connect: 70.093828959 ± 10.278982968655516
+  Informed RRT* Connect: 673.2156519360003 ± 142.67387658032615
+
+Iterations of First Solution:
+  RRT Connect: 454.0 ± 128.699494948504
+  RRT* Connect: 490.5 ± 194.14492009836363
+  Informed RRT* Connect: 365.0 ± 246.59847931404607
+
+Path Cost:
+  RRT Connect: 187.0398173072868 ± 8.438402266702198
+  RRT* Connect: 181.59566203150123 ± 6.941302692702924
+  Informed RRT* Connect: 180.10572012137993 ± 7.6121082864063405
+
+Tree Densities:
+  RRT Connect: (start_tree=2415.5 ± 124.72052758066734, goal_tree=2417.0 ± 120.74439945604102, total=4834.0 ± 233.59152381882353))
+  RRT* Connect: (start_tree=2342.5 ± 183.63158769667052, goal_tree=2350.0 ± 147.5518891780109, total=4663.5 ± 324.70478900071674))
+  Informed RRT* Connect: (start_tree=2457.0 ± 261.9169524868522, goal_tree=2447.5 ± 205.85052829662592, total=4904.5 ± 465.263420010643))

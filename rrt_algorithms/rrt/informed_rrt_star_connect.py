@@ -38,6 +38,21 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
 
         return C
 
+    def sample_unit_ball(self, n):
+        # Sample on a unit N+1 sphere
+        r = np.random.normal(0, 1, (n, self.X.dimensions + 2))
+        norm = np.linalg.norm(r, axis=-1, keepdims=True)
+        r = r / norm
+        # The first N coordinates are uniform in a unit N ball
+        if n == 1: return r[0, :self.X.dimensions]
+        return r[:, :self.X.dimensions]
+
+    def is_inbound_sample(self, x_rand):
+        for i, axlims in enumerate(self.X.dimension_lengths):
+            if not axlims[0] < x_rand[i] < axlims[1]:
+                return False
+        return True
+
     def informed_sample(self):
         x_init = np.array(self.x_init)
         x_goal = np.array(self.x_goal)
@@ -51,8 +66,13 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
                 r.append(np.sqrt(self.c_best ** 2 - c_min ** 2) / 2)
 
             L = np.diag(r)
-            x_ball = 2 * np.random.rand(self.X.dimensions) - 1
+
+            x_ball = self.sample_unit_ball(1)
             x_rand = (self.C @ L @ x_ball).flatten() + x_center
+            while not (self.X.obstacle_free(x_rand) and self.is_inbound_sample(x_rand)):
+                x_ball = self.sample_unit_ball(1)
+                x_rand = (self.C @ L @ x_ball).flatten() + x_center
+
         else:
             x_rand = self.X.sample_free()
 
@@ -124,7 +144,7 @@ class InformedRRTStarBidirectional(RRTStarBidirectional):
             self.samples_taken += 1
             self.iteration_cpu.append((self.samples_taken, process_time() - t0_process))
 
-            percentage_current = 100 if self.max_samples == 1 else round(
+            percentage_current = 100 if self.max_samples == 1 else int(
                 self.samples_taken / (self.max_samples - 1) * 100.)
             if percentage_disp != percentage_current:
                 percentage_disp = percentage_current
